@@ -1,5 +1,10 @@
+function generateSessionId(){
+    return Date.now().toString() + "-" + Math.random().toString(36).slice(2);
+}
+
 const recordBtn = document.getElementById("recordBtn");
 
+let sessionId = generateSessionId();
 let mediaRecorder;
 let audioChunks = [];
 
@@ -7,13 +12,13 @@ recordBtn.addEventListener("click", async () => {
     if (!mediaRecorder || mediaRecorder.state == "inactive") {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
-        audioChunk = [];
+        audioChunks = [];
 
         mediaRecorder.ondataavailable = (event) => {
             audioChunks.push(event.data);
         };
 
-        mediaRecorder.onstop = async () => {
+        mediaRecorder.onstop = async () => {    
             const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
 
             const formData = new FormData();
@@ -30,7 +35,7 @@ recordBtn.addEventListener("click", async () => {
             const chatResponse = await fetch("/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sessionId: "browser-session-1", message: data.text })
+                body: JSON.stringify({ sessionId: sessionId, message: data.text })
             });
 
             const chatData = await chatResponse.json();
@@ -54,4 +59,12 @@ recordBtn.addEventListener("click", async () => {
         mediaRecorder.stop();
         recordBtn.textContent = "Record";
     }
+
+    const newConvoBtn = document.getElementById("newConvoBtn");
+
+    newConvoBtn.addEventListener("click", () => {
+        sessionId = generateSessionId();
+        document.getElementById("transcript").textContent = "";
+        document.getElementById("reply").textContent = "";
+    });
 });
