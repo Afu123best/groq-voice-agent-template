@@ -9,6 +9,7 @@ const groq = new Groq({apiKey: process.env.GROQ_API_KEY});
 const conversations = new Map();
 const tickets = [];
 app.use(express.json());
+app.use(express.static("public"));
 const PORT = 3001;
 const tickeTool = [
     {
@@ -84,7 +85,8 @@ app.post("/transcribe", upload.single("audio"), async (req,res) => {
 
     const transcription = await groq.audio.transcriptions.create({
         file: new File([file.buffer], "audio.webm", { type: file.mimetype }),
-        model: "whisper-large-v3-turbo"
+        model: "whisper-large-v3-turbo",
+        language: "en"
     });
 
     res.json({ text: transcription.text });
