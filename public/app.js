@@ -3,68 +3,78 @@ function generateSessionId(){
 }
 
 const recordBtn = document.getElementById("recordBtn");
+const newConvoBtn = document.getElementById("newConvoBtn");
 
 let sessionId = generateSessionId();
 let mediaRecorder;
 let audioChunks = [];
 
-recordBtn.addEventListener("click", async () => {
-    if (!mediaRecorder || mediaRecorder.state == "inactive") {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
+async function startRecording() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-        mediaRecorder.ondataavailable = (event) => {
-            audioChunks.push(event.data);
-        };
+    const audioContext = new AudioContext();
+    const source = audioContext.createMediaStreamSource(stream);
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 512;
+    source.connect(analyser);
 
-        mediaRecorder.onstop = async () => {    
-            const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
 
-            const formData = new FormData();
-            formData.append("audio", audioBlob, "recording.webm");
+    mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+    };
 
-            const response = await fetch("/transcribe", {
-                method: "POST",
-                body: formData
-            });
+    mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
 
-            const data = await response.json();
-            document.getElementById("transcript").textContent = data.text;
+        const formData = new FormData();
+        formData.append("audio", audioBlob, "recording.webm");
 
-            const chatResponse = await fetch("/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sessionId: sessionId, message: data.text })
-            });
+        const response = await fetch("/transcribe", {
+            method: "POST",
+            body: formData
+        });
 
-            const chatData = await chatResponse.json();
-            document.getElementById("reply").textContent = chatData.reply;
+        const data = await response.json();
+        document.getElementById("transcript").textContent = data.text;
 
-            const ttsResponse = await fetch("/tts", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: chatData.reply })
-            });
+        const chatResponse = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId: sessionId, message: data.text })
+        });
 
-            const audioData = await ttsResponse.blob();
-            const audioURL = URL.createObjectURL(audioData);
-            const audio = new Audio(audioURL);
-            audio.play();
-        };
+        const chatData = await chatResponse.json();
+        document.getElementById("reply").textContent = chatData.reply;
 
-        mediaRecorder.start();
-        recordBtn.textContent = "Stop";
+        const ttsResponse = await fetch("/tts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: chatData.reply })
+        });
+
+        const audioData = await ttsResponse.blob();
+        const audioURL = URL.createObjectURL(audioData);
+        const audio = new Audio(audioURL);
+        audio.play();
+    };
+
+    mediaRecorder.start();
+    recordBtn.textContent = "Stop";
+}
+
+recordBtn.addEventListener("click", () => {
+    if (!mediaRecorder || mediaRecorder.state === "inactive") {
+        startRecording();
     } else {
         mediaRecorder.stop();
         recordBtn.textContent = "Record";
     }
+});
 
-    const newConvoBtn = document.getElementById("newConvoBtn");
-
-    newConvoBtn.addEventListener("click", () => {
-        sessionId = generateSessionId();
-        document.getElementById("transcript").textContent = "";
-        document.getElementById("reply").textContent = "";
-    });
+newConvoBtn.addEventListener("click", () => {
+    sessionId = generateSessionId();
+    document.getElementById("transcript").textContent = "";
+    document.getElementById("reply").textContent = "";
 });

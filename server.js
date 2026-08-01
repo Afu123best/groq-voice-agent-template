@@ -8,8 +8,6 @@ const upload = multer({ storage: multer.memoryStorage() });
 const groq = new Groq({apiKey: process.env.GROQ_API_KEY});
 const conversations = new Map();
 const tickets = [];
-app.use(express.json());
-app.use(express.static("public"));
 const PORT = 3001;
 const tickeTool = [
     {
@@ -31,6 +29,9 @@ const tickeTool = [
     }
 ];
 
+app.use(express.json());
+app.use(express.static("public"));
+
 app.get("/health", (req,res) =>{
     res.json({ok: true});
 });
@@ -42,7 +43,7 @@ app.post("/chat", async (req,res) => {
         conversations.set(sessionId, [
             {
                 role: "system",
-                content: "You are Zaraa, a helpdesk agent in treet manufacturing. Collect these four things from the user through natural conversation, one question at a time: Main Category, Sub Category, Short Description, Long Description. Once you have all four, call the create_ticket tool. Keep responses short and incredibly professional and concise. This is a spoken conversation."
+                content: "You are Zaraa, a helpdesk agent in treet manufacturing. Collect these four things from the user through natural conversation, one question at a time: Main Category, Sub Category, Short Description, Long Description. Once you have all four, call the create_ticket tool. Keep responses short and incredibly professional and incredibly concise. This is a spoken conversation."
             }
         ]);
     }
