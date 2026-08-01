@@ -58,10 +58,48 @@ async function startRecording() {
         const audioURL = URL.createObjectURL(audioData);
         const audio = new Audio(audioURL);
         audio.play();
+        audio.onended = () => {
+            startRecording();
+        };
     };
 
     mediaRecorder.start();
     recordBtn.textContent = "Stop";
+    detectSilence(analyser);
+}
+
+function detectSilence(analyser){
+    const data = new Uint8Array(analyser.fftSize);
+    let silenceStart = null;
+    const silenceThreshold = 2;
+    const silenceDuration = 1500;
+
+    function checkVolume(){
+        if (mediaRecorder.state != "recording") return;
+
+        analyser.getByteTimeDomainData(data);
+
+        let sumDeviation = 0;
+        for (let i = 0; i < data.length; i++){
+            sumDeviation += Math.abs(data[i] - 128);
+        }
+        const averageVolume = sumDeviation / data.length;
+
+        if (averageVolume < silenceThreshold){
+            if (silenceStart === null){
+                silenceStart = Date.now();
+            } else if (Date.now() - silenceStart > silenceDuration){
+                mediaRecorder.stop();
+                recordBtn.textContent = "Record";
+                return;
+            }
+        } else{
+                silenceStart = null;
+        }
+
+        requestAnimationFrame(checkVolume);
+    }
+    checkVolume();
 }
 
 recordBtn.addEventListener("click", () => {
